@@ -1,0 +1,394 @@
+# =============================================================================
+# CI Harness — Server-side mirror of pre-commit-harness.sh
+# =============================================================================
+# Runs the same 7 checks that the local pre-commit hook enforces,
+# so pushes that bypass the hook are still caught.
+# Additionally runs Phase 4 security checks (SEC-01/02/03) that are
+# too slow for the pre-commit loop but essential before merging.
+#
+# This workflow acts as a safety net: even if a developer skips the
+# local pre-commit hook (e.g., using --no-verify), these checks will
+# still run on the GitHub server and block non-compliant code.
+#
+# All 7 harness jobs run in PARALLEL (not sequentially) because they
+# have no dependencies on each other. This means faster feedback —
+# all checks start at the same time on separate runners.
+#
+# The 3 security jobs (SEC-*) run AFTER compilation succeeds, since
+# they need compiled .class files to analyze.
+# =============================================================================
+
+name: CI Harness
+
+# -----------------------------------------------------------------------------
+# TRIGGERS — When does this workflow run?
+# -----------------------------------------------------------------------------
+# 1. pull_request → runs when a PR is opened, updated (new commits pushed),
+#                   or reopened targeting the 'main' branch.
+#
+# 2. push → runs when commits are pushed to any of these branches:
+#    - main              : catches direct pushes (should be rare with branch protection)
+#    - feat/**           : feature branches like feat/user-api, feat/auth/login
+#    - fix/**            : bugfix branches like fix/null-pointer, fix/api/timeout
+#    - refactor/**       : refactoring branches like refactor/extract-service
+#
+#    The ** glob matches any nesting depth, so feat/api/v2 also matches.
+#
+# Feature branches are included so developers get CI feedback immediately
+# on push, BEFORE creating a PR. This catches issues early.
+#
+# Branches NOT covered (no CI on push): docs/*, test/*, chore/*
+# These still get CI when a PR is opened against main.
+# -----------------------------------------------------------------------------
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, 'feat/**', 'fix/**', 'refactor/**']
+
+# -----------------------------------------------------------------------------
+# PERMISSIONS — Least-privilege principle
+# -----------------------------------------------------------------------------
+# This workflow only needs to read the repository contents.
+# It does not push code, create releases, or modify anything.
+# Restricting to 'read' minimizes risk if the workflow is compromised.
+# (GitHub Actions default is 'write', which is overly permissive.)
+# -----------------------------------------------------------------------------
+permissions:
+  contents: read
+
+jobs:
+  # ===========================================================================
+  # BUILD-01: Compilation
+  # ---------------------------------------------------------------------------
+  # Verifies that the Java source code compiles without errors.
+  # The -q (quiet) flag suppresses Maven's verbose output — only errors
+  # are shown, making the CI log easier to read.
+  #
+  # Uses Temurin (Eclipse Adoptium) JDK 21, the free, production-ready
+  # OpenJDK distribution.
+  #
+  # 'cache: maven' caches ~/.m2/repository between CI runs so Maven
+  # dependencies don't need to be re-downloaded every time. This can
+  # save several minutes per run.
+  # ===========================================================================
+  build-compile:
+    name: "BUILD-01: Compilation"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4       # Clone the repository
+      - uses: actions/setup-java@v4     # Install JDK
+        with:
+          distribution: temurin         # Eclipse Adoptium OpenJDK
+          java-version: 21              # Java 21 (LTS)
+          cache: maven                  # Cache ~/.m2 for faster builds
+      - run: ./mvnw compile -q          # Compile only, no tests
+
+  # ===========================================================================
+  # BUILD-02: Tests
+  # ---------------------------------------------------------------------------
+  # Runs all unit tests via Maven Surefire Plugin.
+  # In Quarkus projects, @QuarkusTest integration tests also run here.
+  #
+  # If any test fails, the entire job fails and the PR/push shows a red X.
+  # Test output (including failure details) is visible in the GitHub Actions log.
+  # ===========================================================================
+  build-tests:
+    name: "BUILD-02: Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: ./mvnw test                # Run all unit/integration tests
+
+  # ===========================================================================
+  # BUILD-03: Code Formatting (Spotless)
+  # ---------------------------------------------------------------------------
+  # Checks that all Java files follow the project's formatting rules.
+  # Uses the Spotless Maven plugin in CHECK mode — read-only, makes no changes.
+  #
+  # If formatting is wrong, this job fails. To fix locally, run:
+  #   ./mvnw spotless:apply
+  # This auto-formats all files, then commit the changes.
+  #
+  # Common formatting issues: indentation, import ordering, trailing whitespace.
+  # ===========================================================================
+  build-formatting:
+    name: "BUILD-03: Formatting"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: ./mvnw spotless:check -q   # Check only, do not modify files
+
+  # ===========================================================================
+  # QUAL-01: No System.out.println
+  # ---------------------------------------------------------------------------
+  # Scans src/main/java/ for any use of System.out.print (covers both
+  # System.out.print() and System.out.println()).
+  #
+  # Why? In production code, System.out bypasses the logging framework,
+  # making it impossible to control log levels, format, or routing.
+  # Use org.jboss.logging.Logger instead (Quarkus default logger).
+  #
+  # Note: src/test/java/ is NOT scanned — System.out is acceptable in tests.
+  #
+  # grep flags:
+  #   -r  recursive (scan all subdirectories)
+  #   -l  list filenames only (not the matching lines)
+  # The 2>/dev/null suppresses "No such file or directory" if src/main/java
+  # doesn't exist yet (e.g., in an empty project).
+  # ===========================================================================
+  qual-no-sysout:
+    name: "QUAL-01: No System.out"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for System.out.print usage
+        run: |
+          if grep -rl "System\.out\.print" src/main/java/ 2>/dev/null; then
+            echo "::error::QUAL-01 FAILED: System.out.println found. Use org.jboss.logging.Logger instead."
+            exit 1
+          fi
+
+  # ===========================================================================
+  # QUAL-02: No Hardcoded Secrets
+  # ---------------------------------------------------------------------------
+  # Scans source code and config files for patterns that look like
+  # hardcoded credentials.
+  #
+  # The regex pattern explained:
+  #   (password|apiKey|api_key|secret|token)  — common secret field names
+  #   \s*=\s*                                 — equals sign with optional spaces
+  #   "[^"$]+                                 — a quoted string that is NOT empty
+  #                                             and does NOT start with $ (which
+  #                                             would indicate a variable reference
+  #                                             like "${DB_PASSWORD}")
+  #
+  # Scans both:
+  #   - src/main/java/      — Java source files
+  #   - src/main/resources/ — config files (application.properties, etc.)
+  #
+  # grep flags:
+  #   -r  recursive
+  #   -E  extended regex (enables | alternation and + quantifier)
+  #   -l  list filenames only
+  #
+  # Fix: use @ConfigProperty injection or environment variables instead.
+  # ===========================================================================
+  qual-no-secrets:
+    name: "QUAL-02: No Hardcoded Secrets"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for hardcoded secrets
+        run: |
+          PATTERN='(password|apiKey|api_key|secret|token)\s*=\s*"[^"$]+'
+          if grep -rEl "$PATTERN" src/main/java/ src/main/resources/ 2>/dev/null; then
+            echo "::error::QUAL-02 FAILED: Possible hardcoded secrets found. Use @ConfigProperty or environment variables."
+            exit 1
+          fi
+
+  # ===========================================================================
+  # CONV-01: Conventional Commits (PR title)
+  # ---------------------------------------------------------------------------
+  # Validates that the PR title follows the Conventional Commits format:
+  #   <type>(<scope>): <subject>
+  #
+  # Valid examples:
+  #   feat(api): add user registration endpoint
+  #   fix(auth): resolve token expiration bug
+  #   docs: update README with setup instructions       ← scope is optional
+  #   refactor(db): extract repository pattern
+  #
+  # The 'if: github.event_name == pull_request' condition ensures this
+  # ONLY runs on pull_request events. When code is pushed directly to a
+  # branch (not via PR), this check is skipped — there's no PR title to check.
+  #
+  # Security note: PR_TITLE is passed via env var (not inline shell
+  # interpolation) to prevent shell injection. A malicious PR title
+  # containing backticks or $() could execute arbitrary commands if
+  # interpolated directly in the shell script.
+  # ===========================================================================
+  conv-commits:
+    name: "CONV-01: Conventional Commits"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'   # Only on PRs, not push events
+    steps:
+      - name: Check PR title follows Conventional Commits
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}   # Safe injection via env
+        run: |
+          if ! echo "$PR_TITLE" | grep -qE "^(feat|fix|docs|refactor|test|chore)(\(.+\))?: .+"; then
+            echo "::error::CONV-01 FAILED: PR title '${PR_TITLE}' does not follow Conventional Commits format."
+            echo "::error::Required: <type>(<scope>): <subject>"
+            echo "::error::Types: feat, fix, docs, refactor, test, chore"
+            exit 1
+          fi
+
+  # ===========================================================================
+  # CONV-02: Test Coverage for REST Endpoints
+  # ---------------------------------------------------------------------------
+  # Ensures every REST resource class has a corresponding test file.
+  #
+  # How it works:
+  #   1. Finds all .java files containing @Path annotation (JAX-RS REST endpoints)
+  #   2. For each one, computes the expected test file path:
+  #      src/main/java/com/example/GreetingResource.java
+  #      → src/test/java/com/example/GreetingResourceTest.java
+  #   3. Checks if that test file exists on disk
+  #   4. If any test files are missing, the job fails with a list
+  #
+  # This is a STRUCTURAL check (does the file exist?), NOT a coverage
+  # percentage check. It ensures developers don't forget to create
+  # test files for new endpoints, but doesn't verify test quality
+  # or how many lines/branches are covered.
+  # ===========================================================================
+  conv-test-coverage:
+    name: "CONV-02: Test Coverage"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check REST endpoints have test files
+        run: |
+          MISSING=""
+          for resource in $(find src/main/java -name "*.java" -exec grep -l "@Path" {} \; 2>/dev/null); do
+            classname=$(basename "$resource" .java)
+            rel_path="${resource#src/main/java/}"
+            test_dir="src/test/java/$(dirname "$rel_path")"
+            testfile="${test_dir}/${classname}Test.java"
+            if [ ! -f "$testfile" ]; then
+              MISSING="$MISSING $classname"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::CONV-02 FAILED: Missing test files for REST endpoints:${MISSING}"
+            exit 1
+          fi
+
+  # ===========================================================================
+  # Phase 4 — Security Checks (CI-only, not in pre-commit)
+  # ---------------------------------------------------------------------------
+  # These run AFTER build-compile succeeds ('needs: build-compile').
+  # They are too slow for the local pre-commit loop (can take minutes),
+  # but essential for validating AI-generated code before merging.
+  #
+  # The 'needs' keyword creates a dependency: if BUILD-01 fails,
+  # these security jobs are automatically skipped (no point scanning
+  # code that doesn't even compile).
+  # ===========================================================================
+
+  # ===========================================================================
+  # SEC-01: SpotBugs Static Analysis
+  # ---------------------------------------------------------------------------
+  # SpotBugs is a static analysis tool that finds common bug patterns
+  # in Java bytecode (compiled .class files). It detects issues like:
+  #   - Null pointer dereferences
+  #   - Infinite recursive loops
+  #   - Bad use of synchronized blocks
+  #   - Resource leaks (unclosed streams)
+  #   - SQL injection vulnerabilities
+  #
+  # Runs 'compile' first because SpotBugs analyzes bytecode, not source.
+  # ===========================================================================
+  sec-spotbugs:
+    name: "SEC-01: SpotBugs"
+    runs-on: ubuntu-latest
+    needs: build-compile               # Wait for BUILD-01 to pass first
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: ./mvnw compile spotbugs:check -q
+
+  # ===========================================================================
+  # SEC-02: OWASP Dependency-Check (known CVEs)
+  # ---------------------------------------------------------------------------
+  # Scans all Maven dependencies for known security vulnerabilities (CVEs)
+  # using the NIST National Vulnerability Database (NVD).
+  #
+  # Think of it like checking if any of the JARs you depend on have
+  # publicly disclosed security holes (like Log4Shell was for log4j).
+  #
+  # NVD_API_KEY: Required. Without it, NVD rate-limits API calls heavily
+  # and the check will likely fail or take 10+ minutes.
+  # Register for a free key at: https://nvd.nist.gov/developers/request-an-api-key
+  # Then add it as a GitHub secret named NVD_API_KEY.
+  # ===========================================================================
+  sec-dependency-check:
+    name: "SEC-02: Dependency-Check"
+    runs-on: ubuntu-latest
+    needs: build-compile               # Wait for BUILD-01 to pass first
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Cache NVD database
+        uses: actions/cache@v4
+        with:
+          path: ~/.dependency-check
+          key: nvd-db-${{ hashFiles('pom.xml') }}
+          restore-keys: nvd-db-
+      - name: Run OWASP Dependency-Check
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}   # Optional GitHub secret
+        run: |
+          ARGS="-DdataDirectory=$HOME/.dependency-check"
+          if [ -n "$NVD_API_KEY" ]; then
+            ARGS="$ARGS -DnvdApiKey=$NVD_API_KEY"
+          fi
+          ./mvnw dependency-check:check $ARGS
+      - name: Upload Dependency-Check Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: target/dependency-check-report.html
+
+  # ===========================================================================
+  # SEC-03: SBOM Generation (CycloneDX)
+  # ---------------------------------------------------------------------------
+  # Generates a Software Bill of Materials (SBOM) — a complete inventory
+  # of all dependencies (direct and transitive) used in this project.
+  #
+  # Think of it like a nutrition label for software: it lists every
+  # library, its version, and its license. This is increasingly
+  # required by regulations (e.g., US Executive Order 14028) and
+  # helpful for supply chain security audits.
+  #
+  # CycloneDX is one of two major SBOM formats (the other is SPDX).
+  #
+  # The generated SBOM files (target/bom.json, target/bom.xml) are
+  # uploaded as a GitHub Actions artifact, downloadable from the
+  # workflow run page for 90 days (default retention).
+  # ===========================================================================
+  sec-sbom:
+    name: "SEC-03: SBOM"
+    runs-on: ubuntu-latest
+    needs: build-compile               # Wait for BUILD-01 to pass first
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: ./mvnw compile cyclonedx:makeAggregateBom -q   # Generate SBOM
+      - uses: actions/upload-artifact@v4   # Save SBOM as downloadable artifact
+        with:
+          name: sbom-cyclonedx
+          path: target/bom.*               # Upload both bom.json and bom.xml

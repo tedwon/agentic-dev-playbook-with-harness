@@ -1,0 +1,39 @@
+---
+description: Java/Quarkus code conventions - style, patterns, and testing requirements
+globs: "**/*.java"
+---
+
+# Code Conventions
+
+## Java & Quarkus
+
+- **Java 21:** use records for DTOs, pattern matching, sealed classes where appropriate
+- **Quarkus:** CDI annotations (`@Inject`, `@ApplicationScoped`), not Spring-style
+- **Logging:** `private static final Logger LOG = Logger.getLogger(ClassName.class);`
+  using `org.jboss.logging.Logger`
+- **Config:** `@ConfigProperty(name = "app.setting")` with `application.properties`
+- **Testing:** `@QuarkusTest` with REST Assured for endpoint tests
+- **Commits:** Conventional Commits format: `type(scope): subject`
+  Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+
+## Development
+
+```bash
+# Dev mode with live reload
+./mvnw quarkus:dev
+
+# Run tests
+./mvnw test
+
+# Build
+./mvnw package
+```
+
+## Project Structure
+
+```
+src/
+├── main/java/          # Application code
+├── main/resources/     # Config and static resources
+└── test/java/          # Tests
+```
