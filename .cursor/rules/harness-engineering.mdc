@@ -1,0 +1,54 @@
+---
+description: Harness engineering rules for autonomous AI development - mandatory quality gates enforced before every commit
+alwaysApply: true
+---
+
+# Harness Engineering Rules
+
+This project uses **harness engineering** for autonomous AI development.
+All rules are enforced by git pre-commit/commit-msg hooks (see `hooks/` directory).
+
+## Mandatory Rules (enforced by hooks)
+
+1. **[BUILD-01] Compilation must pass** before commit (`./mvnw compile -q`)
+2. **[BUILD-02] All tests must pass** before commit (`./mvnw test`)
+3. **[BUILD-03] Code must be formatted** with Spotless (`./mvnw spotless:check -q`)
+4. **[QUAL-01] No System.out.println** — use `org.jboss.logging.Logger` only
+5. **[QUAL-02] No hardcoded secrets** — use `@ConfigProperty` or environment variables
+6. **[CONV-01] Conventional commits** — format: `type(scope): subject`
+7. **[CONV-02] Test coverage** — every `@Path` class must have a `*Test.java`
+
+See CHECKLIST.md for the complete verification checklist.
+
+## Self-Correction Protocol
+
+When a commit is blocked by the harness:
+
+1. Read the error message carefully — it lists ALL failures with rule IDs
+2. Fix ALL listed violations (not just the first one)
+3. If BUILD-03 (formatting) fails: run `./mvnw spotless:apply`
+4. Stage all changes with `git add`
+5. Retry the commit with the same or corrected commit message
+6. Repeat until all 7 checks pass
+
+## Protected Files
+
+Do NOT modify these files — they define the harness rules:
+
+- `CLAUDE.md`
+- `CHECKLIST.md`
+- `.claude/settings.json`
+- `.claude/hooks/*`
+- `.cursor/rules/*`
+- `hooks/*`
+
+## Build Commands
+
+```bash
+./mvnw compile -q       # Compile check
+./mvnw test              # Run all unit tests
+./mvnw spotless:check    # Check code formatting
+./mvnw spotless:apply    # Auto-fix code formatting
+./mvnw quarkus:dev       # Dev mode with live reload
+./mvnw verify            # Full verification (unit + integration tests)
+```

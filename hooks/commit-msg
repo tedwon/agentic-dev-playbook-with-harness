@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Standard Git Commit-Msg Hook for Conventional Commits Validation
+# =============================================================================
+# Checks CONV-01: commit message must follow Conventional Commits format.
+# Works with any git client: Cursor, Copilot, VS Code, manual git, etc.
+#
+# Install: ./scripts/install-git-hooks.sh
+# =============================================================================
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
+
+# Skip merge commits
+if echo "$COMMIT_MSG" | grep -qE "^Merge "; then
+    exit 0
+fi
+
+echo "HARNESS: Running CONV-01 (conventional commits)..." >&2
+
+if echo "$COMMIT_MSG" | grep -qE "^(feat|fix|docs|refactor|test|chore)(\(.+\))?: .+"; then
+    echo "HARNESS: CONV-01 PASSED" >&2
+    exit 0
+else
+    cat >&2 <<REPORT
+
+========================================
+HARNESS: COMMIT BLOCKED
+[FAIL] CONV-01: Commit message does not follow Conventional Commits format.
+========================================
+
+  Current:  '${COMMIT_MSG}'
+  Required: <type>(<scope>): <subject>
+  Types:    feat, fix, docs, refactor, test, chore
+  Example:  feat(greeting): add personalized greeting endpoint
+
+----------------------------------------
+ACTION REQUIRED: Retry with a valid commit message.
+========================================
+REPORT
+    exit 1
+fi
