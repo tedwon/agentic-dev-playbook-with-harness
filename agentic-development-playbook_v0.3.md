@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Version** | v0.2 |
+| **Version** | v0.3 |
 | **Last updated** | 2026-04-22 |
 | **Status** | Living document — updated through real-world practice |
 
@@ -81,6 +81,8 @@ repeated mistakes.
   - [Step 1 — Brainstorming](#step-1--brainstorming)
   - [Step 2 — Plan writing](#step-2--plan-writing)
 - [Phase 2: Execution (separate session)](#phase-2-execution-separate-session)
+  - [Step 0 — Create an isolated worktree](#step-0--create-an-isolated-worktree)
+  - [Step 1 — Execute the plan](#step-1--execute-the-plan)
   - [Self-review before human review (Reflection pattern)](#self-review-before-human-review-reflection-pattern)
   - [Dependency graph before deletion](#dependency-graph-before-deletion)
   - [Library documentation with context7](#library-documentation-with-context7)
@@ -317,7 +319,7 @@ the **start-simple principle** — use the lightest approach that delivers the o
 | Complexity level             | When to use                                                         | Approach                                                             |
 | ---------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | **Single LLM call + tools**  | Well-understood change, one file or module, clear requirements      | Skip this playbook. Just ask Claude Code directly.                   |
-| **Workflow (this playbook)** | Multi-file feature, cross-cutting concerns, design decisions needed | Follow the full Phase 1–4 flow below.                                |
+| **Workflow (this playbook)** | Multi-file feature, cross-cutting concerns, design decisions needed | Follow the full Phase 1–4 flow below. Execution uses a git worktree for isolation. |
 | **Parallel subagents**       | Plan has 3+ independent tasks with no shared state                  | Use `/subagent-driven-development` during execution (Phase 2).       |
 
 Most features belong in the middle row. Resist the temptation to use parallel subagents
@@ -407,13 +409,49 @@ Commit the generated spec, plan, and any new ADRs. Claude Code can handle git op
 > **Rule:** start a fresh session for execution. The design session exhausts the context
 > window. The generated plan is the only handoff — it must be self-contained.
 
+### Step 0 — Create an isolated worktree
+
+Before executing the plan, create a **git worktree** to isolate the agent's work from your
+main checkout. This prevents broken builds, corrupted state, or half-finished work from
+affecting your working directory.
+
+```text
+/using-git-worktrees
 ```
+
+The worktree creates a separate directory with its own branch checked out. All agent work —
+code generation, compilation, testing — happens inside this sandbox. Your main checkout
+remains untouched and stable.
+
+**Why worktrees matter for agentic workflows:**
+
+- **Main branch protection:** if the agent writes buggy code or breaks the build during
+  its iteration loop, your primary workspace is unaffected
+- **Parallel work:** you can continue working in your main checkout while the agent
+  iterates in the worktree
+- **Clean merge gate:** code only merges back after all harness checks pass in the worktree
+- **Easy cleanup:** if the agent's work is unsalvageable, delete the worktree directory —
+  no `git reset --hard` or manual cleanup needed
+
+**Worktree workflow:**
+
+```text
+1. Create worktree:  /using-git-worktrees (creates feature branch + worktree directory)
+2. Execute plan:     /executing-plans (agent works entirely within the worktree)
+3. Verify:           All harness checks pass in the worktree (BUILD-01..CONV-02)
+4. Merge:            Only after all checks pass, merge the feature branch back
+5. Cleanup:          Remove the worktree directory
+```
+
+### Step 1 — Execute the plan
+
+```text
 /executing-plans docs/superpowers/plans/<date>-<ticket>-<plan-name>.md
 ```
 
 For plans with independent tasks:
 
-```
+```text
 /subagent-driven-development
 ```
 
@@ -594,6 +632,7 @@ real traffic. Use Quarkus dev services where possible for local integration test
 - [ ] REST endpoints return expected responses
 - [ ] No silent failures in application logs
 - [ ] Reviewer can explain the agent's implementation choices (skill atrophy check)
+- [ ] Git worktree cleaned up after merge (no stale worktree directories)
 - [ ] Execution summary saved with decisions and corrections log
 - [ ] Ticket updated and linked to the merged PR/MR
 
@@ -753,6 +792,8 @@ gap — the fix belongs in the document, not in tribal knowledge.
 | Agent invents framework config properties | Verify configuration properties against context7 documentation or the framework's official reference; do not accept unfamiliar properties without checking |
 | Agent produces semantically incorrect business logic | Human review must verify domain correctness, not just compilation and test passage; tests can pass while the logic is wrong if the test was also agent-generated |
 | Reviewer approves code they cannot explain | If the reviewer cannot articulate why the agent chose an approach, pause and investigate before approving — this is a skill atrophy signal |
+| Agent works directly in main checkout | Always use a git worktree for execution — isolates agent work and prevents main branch corruption; cleanup is a directory delete, not a `git reset` |
+| Worktree left behind after feature completion | Delete worktrees after merging; stale worktrees consume disk space and create confusion about which directory contains current work |
 
 ---
 
@@ -810,6 +851,22 @@ replace the tool-specific elements with equivalents for the target platform.
 ---
 
 ## Revision History
+
+### 2026-04-22 — Added git worktree isolation to Phase 2
+
+Incorporated git worktree as the isolation mechanism for agentic execution.
+
+**Changes:**
+
+- **New "Step 0 — Create an isolated worktree" in Phase 2** — agent creates a git worktree
+  before executing the plan, providing a sandbox that protects the main checkout from broken
+  builds, corrupted state, or half-finished work during the agent's iteration loop
+- **Updated Step 0 complexity table** — Workflow row now references worktree isolation
+- **Two new pitfalls** — agent works directly in main checkout (use worktree instead);
+  worktree left behind after feature completion (clean up after merge)
+- **Updated closing checklist** — added worktree cleanup verification step
+- **Renamed execution steps** — Phase 2 steps renumbered to accommodate the new worktree
+  step (Step 0: worktree, Step 1: execute plan)
 
 ### 2026-04-12 — Enhanced version based on strategic research report review
 
