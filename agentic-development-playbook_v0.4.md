@@ -2,8 +2,8 @@
 
 | | |
 | --- | --- |
-| **Version** | v0.3 |
-| **Last updated** | 2026-04-22 |
+| **Version** | v0.4 |
+| **Last updated** | 2026-04-23 |
 | **Status** | Living document — updated through real-world practice |
 
 > This playbook is versioned and tagged to avoid confusion across projects.
@@ -77,9 +77,10 @@ repeated mistakes.
   - [Verify prerequisites](#verify-prerequisites)
 - [Prerequisites per feature](#prerequisites-per-feature)
 - [Phase 1: Design (one session)](#phase-1-design-one-session)
-  - [Step 0 — Choose the right level of complexity](#step-0--choose-the-right-level-of-complexity)
-  - [Step 1 — Brainstorming](#step-1--brainstorming)
-  - [Step 2 — Plan writing](#step-2--plan-writing)
+  - [Step 0 — Create a feature branch](#step-0--create-a-feature-branch)
+  - [Step 1 — Choose the right level of complexity](#step-1--choose-the-right-level-of-complexity)
+  - [Step 2 — Brainstorming](#step-2--brainstorming)
+  - [Step 3 — Plan writing](#step-3--plan-writing)
 - [Phase 2: Execution (separate session)](#phase-2-execution-separate-session)
   - [Step 0 — Create an isolated worktree](#step-0--create-an-isolated-worktree)
   - [Step 1 — Execute the plan](#step-1--execute-the-plan)
@@ -311,7 +312,21 @@ during an agentic session (unintended PR/MR creation, comment on wrong PR/MR, et
 > that a fresh agent can execute without the design conversation context. The plan is the
 > handoff artifact between sessions.
 
-### Step 0 — Choose the right level of complexity
+### Step 0 — Create a feature branch
+
+Create a feature branch from `main` before starting any design work. All artifacts from this
+feature — specs, plans, ADRs, and implementation code — belong on this branch.
+
+```bash
+git checkout -b feat/PROJ-1234-short-description
+```
+
+**Naming convention:** `feat/<ticket>-<short-description>` (e.g.,
+`feat/PROJ-1234-add-task-api`). Use the ticket ID from the prerequisite step. This branch
+carries through all four phases — design artifacts are committed here during Phase 1,
+implementation code during Phase 2, and the PR/MR is created from this branch in Phase 3.
+
+### Step 1 — Choose the right level of complexity
 
 Before brainstorming, decide whether this feature actually needs the full playbook. Apply
 the **start-simple principle** — use the lightest approach that delivers the outcome:
@@ -326,7 +341,7 @@ Most features belong in the middle row. Resist the temptation to use parallel su
 for tasks that share state or have sequential dependencies — the coordination overhead
 outweighs the speed gain.
 
-### Step 1 — Brainstorming
+### Step 2 — Brainstorming
 
 The brainstorming skill drives a structured Q&A that explores requirements, edge cases, and
 design decisions before producing any artifacts. It generates the spec as its output.
@@ -365,7 +380,7 @@ Dispatch a reviewer subagent to audit this spec for completeness and correctness
 
 Address all reviewer findings before proceeding.
 
-### Step 2 — Plan writing
+### Step 3 — Plan writing
 
 The writing-plans skill converts the spec into a sequenced implementation plan.
 
@@ -399,8 +414,9 @@ and tasks that could cause regressions in adjacent systems.
 **Create ADRs during the conversation, not after.** When a design decision emerges, capture
 it immediately using `docs/ADR/ADR-template.md`. Context is freshest during the conversation.
 
-Commit the generated spec, plan, and any new ADRs. Claude Code can handle git operations
-(branching, committing, pushing) directly — just ask it to commit and push the changes.
+Commit the generated spec, plan, and any new ADRs on the feature branch created in Step 0.
+Claude Code can handle git operations (committing, pushing) directly — just ask it to commit
+and push the changes.
 
 ---
 
@@ -436,7 +452,7 @@ remains untouched and stable.
 **Worktree workflow:**
 
 ```text
-1. Create worktree:  /using-git-worktrees (creates feature branch + worktree directory)
+1. Create worktree:  /using-git-worktrees (creates worktree directory on the feature branch)
 2. Execute plan:     /executing-plans (agent works entirely within the worktree)
 3. Verify:           All harness checks pass in the worktree (BUILD-01..CONV-02)
 4. Merge:            Only after all checks pass, merge the feature branch back
@@ -851,6 +867,22 @@ replace the tool-specific elements with equivalents for the target platform.
 ---
 
 ## Revision History
+
+### 2026-04-23 — Added feature branch creation to Phase 1
+
+Added an explicit step to create a feature branch before starting design work.
+
+**Changes:**
+
+- **New "Step 0 — Create a feature branch" in Phase 1** — all feature artifacts (specs,
+  plans, ADRs, implementation code) are committed on a dedicated branch from the start,
+  providing a clean commit history and clear PR/MR scope
+- **Renumbered Phase 1 steps** — complexity choice is now Step 1, brainstorming is Step 2,
+  plan writing is Step 3
+- **Updated Phase 1 closing paragraph** — commits reference the feature branch created in
+  Step 0 instead of implying branch creation at commit time
+- **Updated Phase 2 worktree workflow** — worktree uses the existing feature branch rather
+  than creating a new one
 
 ### 2026-04-22 — Added git worktree isolation to Phase 2
 
