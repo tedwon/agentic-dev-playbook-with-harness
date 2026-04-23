@@ -86,7 +86,7 @@ With:
 
 ---
 
-## 3. `agentic-development-playbook_v0.2.md` — Key Pitfalls table
+## 3. `agentic-development-playbook.md` — Key Pitfalls table
 
 Add this row to the Key Pitfalls table (after the last existing row, before `---`):
 

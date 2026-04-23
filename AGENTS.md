@@ -48,7 +48,7 @@ A Quarkus-based REST API application demonstrating AI-assisted agentic developme
 
 ## Agentic Development Workflow
 
-For non-trivial feature work, follow the **[Agentic Development Playbook](agentic-development-playbook_v0.3.md)**. This is a human-in-the-loop workflow with four phases:
+For non-trivial feature work, follow the **[Agentic Development Playbook](agentic-development-playbook.md)**. This is a human-in-the-loop workflow with four phases:
 
 1. **Design** — brainstorm requirements, design decisions, and trade-offs; then produce a detailed implementation plan
 2. **Execute** — implement the plan step-by-step, with harness-enforced quality gates

@@ -760,7 +760,7 @@ PROTECTED_FILES=(
 ## Agentic Development Playbook과의 연결
 
 Harness Engineering 레이어는 기존의
-[Agentic Development Playbook](../agentic-development-playbook_v0.2.md)을
+[Agentic Development Playbook](../agentic-development-playbook.md)을
 **실행 단계** (Phase 2)를 자동화하여 강화해요:
 
 | Playbook 단계 | Harness 없이 | Harness 포함 |

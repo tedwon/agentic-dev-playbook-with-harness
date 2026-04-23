@@ -36,7 +36,7 @@ This repository serves three purposes:
 
 ## Agentic Development Workflow
 
-The [Agentic Development Playbook](agentic-development-playbook_v0.2.md) defines a **Human-in-the-Loop** AI collaborative development process:
+The [Agentic Development Playbook](agentic-development-playbook.md) defines a **Human-in-the-Loop** AI collaborative development process:
 
 1. **Design** — Brainstorm requirements, make design decisions, and create a detailed implementation plan
 2. **Execute** — Implement step-by-step, with harness-enforced quality gates
@@ -154,7 +154,7 @@ Shows Phase 2-4: executing the plan step-by-step, harness self-correction when t
 
 </details>
 
-**Related files:** [Agentic Development Playbook](agentic-development-playbook_v0.2.md) · [Spec](docs/superpowers/specs/2026-04-18-DEMO-001-quote-api.md) · [Plan](docs/superpowers/plans/2026-04-18-DEMO-001-quote-api.md)
+**Related files:** [Agentic Development Playbook](agentic-development-playbook.md) · [Spec](docs/superpowers/specs/2026-04-18-DEMO-001-quote-api.md) · [Plan](docs/superpowers/plans/2026-04-18-DEMO-001-quote-api.md)
 
 ---
 
@@ -258,8 +258,8 @@ In dev mode, the Dev UI is available at <http://localhost:8080/q/dev/>.
 ├── CLAUDE.md                              # Harness rules + self-correction protocol
 ├── AGENTS.md                              # AI agent guidelines + harness engineering
 ├── CHECKLIST.md                           # 7 verification rules (enforced by hooks)
-├── agentic-development-playbook_v0.2.md   # Agentic development playbook
-├── agentic-development-playbook_v0.2-ko.md # Agentic development playbook (Korean)
+├── agentic-development-playbook.md   # Agentic development playbook
+├── agentic-development-playbook-ko.md      # Agentic development playbook (Korean)
 ├── .claude/
 │   ├── settings.json                      # Hook configuration + permissions
 │   ├── hooks/
@@ -348,7 +348,7 @@ These plugins extend the AI agent's capabilities beyond the base model, compleme
 - [How the Harness Works](docs/harness-engineering-how-it-works.md) — Comprehensive guide: architecture, internals, and usage examples
 - [Harness Engineering Guide](docs/harness-engineering-guide.md) — How the harness enables autonomous AI development (Korean)
 - [Verification Checklist](CHECKLIST.md) — 7 rules enforced automatically before every commit
-- [Agentic Development Playbook](agentic-development-playbook_v0.2.md) — AI collaborative workflow guide
+- [Agentic Development Playbook](agentic-development-playbook.md) — AI collaborative workflow guide
 - [OWASP Dependency-Check Guide](docs/owasp-dependency-check-guide.md) — Setup, NVD API key configuration, and local usage
 - [AI Agent References](docs/ai-agent-references.md) — Agent development framework references from Anthropic, McKinsey, and others
 - [ADR Template](docs/ADR/ADR-template.md) — Architecture Decision Record template

@@ -21,7 +21,7 @@ the established workflow and key pitfalls.
 
 ## What to do
 
-1. Read the playbook: `agentic-development-playbook_v0.2.md`
+1. Read the playbook: `agentic-development-playbook.md`
 2. Follow the playbook's conventions throughout the session, including:
    - Key pitfalls table
    - Phase-specific guidance (design, execution, code review, validation)

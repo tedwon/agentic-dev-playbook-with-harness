@@ -763,7 +763,7 @@ parser handles basic cases but may not cover all variations.
 ## How It Connects to the Agentic Development Playbook
 
 The harness engineering layer enhances the existing
-[Agentic Development Playbook](../agentic-development-playbook_v0.2.md) by
+[Agentic Development Playbook](../agentic-development-playbook.md) by
 automating the **Execute phase** (Phase 2):
 
 | Playbook Phase | Without Harness | With Harness |
