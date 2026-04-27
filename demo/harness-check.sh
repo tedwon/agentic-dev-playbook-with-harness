@@ -133,6 +133,7 @@ if [ -z "$ERRORS" ]; then
     echo "  HARNESS: ALL ${TOTAL_CHECKS}/${TOTAL_CHECKS} CHECKS PASSED"
     echo "  Commit allowed."
     echo "========================================"
+    exit 0
 else
     FAIL_COUNT=$((TOTAL_CHECKS - PASS_COUNT))
     echo "========================================"
@@ -144,4 +145,5 @@ else
     echo "----------------------------------------"
     echo "ACTION REQUIRED: Fix ALL [FAIL] items above, then retry."
     echo "========================================"
+    exit 2
 fi

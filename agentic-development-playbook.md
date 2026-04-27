@@ -418,6 +418,15 @@ Commit the generated spec, plan, and any new ADRs on the feature branch created 
 Claude Code can handle git operations (committing, pushing) directly — just ask it to commit
 and push the changes.
 
+Before starting Phase 2, switch your primary checkout away from the feature branch, usually
+back to `main`. Git cannot normally check out the same branch in two worktrees at once, so
+the execution worktree needs the feature branch to be free.
+
+```bash
+git switch main
+git pull --ff-only
+```
+
 ---
 
 ## Phase 2: Execution (separate session)
@@ -446,17 +455,18 @@ remains untouched and stable.
 - **Parallel work:** you can continue working in your main checkout while the agent
   iterates in the worktree
 - **Clean merge gate:** code only merges back after all harness checks pass in the worktree
-- **Easy cleanup:** if the agent's work is unsalvageable, delete the worktree directory —
-  no `git reset --hard` or manual cleanup needed
+- **Easy cleanup:** if the agent's work is unsalvageable, remove the worktree with
+  `git worktree remove <path>` — no `git reset --hard` or manual cleanup needed
 
 **Worktree workflow:**
 
 ```text
-1. Create worktree:  /using-git-worktrees (creates worktree directory on the feature branch)
-2. Execute plan:     /executing-plans (agent works entirely within the worktree)
-3. Verify:           All harness checks pass in the worktree (BUILD-01..CONV-02)
-4. Merge:            Only after all checks pass, merge the feature branch back
-5. Cleanup:          Remove the worktree directory
+1. Confirm main checkout is not on the feature branch (for example, `git switch main`)
+2. Create worktree:  /using-git-worktrees (checks out the feature branch in a worktree)
+3. Execute plan:     /executing-plans (agent works entirely within the worktree)
+4. Verify:           All harness checks pass in the worktree (BUILD-01..CONV-02)
+5. Merge:            Only after all checks pass, merge the feature branch back
+6. Cleanup:          Remove the worktree with `git worktree remove <path>`
 ```
 
 ### Step 1 — Execute the plan
