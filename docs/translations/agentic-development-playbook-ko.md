@@ -1,3 +1,7 @@
+<!-- This is a Korean translation for human reference only.
+     The authoritative version is agentic-development-playbook.md.
+     AI agents should NOT use this file for workflow guidance. -->
+
 # Humans steer. Agents execute. - Agentic Development Playbook
 
 | | |
