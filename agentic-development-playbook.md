@@ -334,7 +334,7 @@ the **start-simple principle** — use the lightest approach that delivers the o
 | Complexity level             | When to use                                                         | Approach                                                             |
 | ---------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | **Single LLM call + tools**  | Well-understood change, one file or module, clear requirements      | Skip this playbook. Just ask Claude Code directly.                   |
-| **Workflow (this playbook)** | Multi-file feature, cross-cutting concerns, design decisions needed | Follow the full Phase 1–4 flow below. Execution uses a git worktree for isolation. |
+| **Workflow (this playbook)** | Multi-file feature, cross-cutting concerns (e.g. logging, security, error handling), design decisions needed | Follow the full Phase 1–4 flow below. Execution uses a git worktree for isolation. |
 | **Parallel subagents**       | Plan has 3+ independent tasks with no shared state                  | Use `/subagent-driven-development` during execution (Phase 2).       |
 
 Most features belong in the middle row. Resist the temptation to use parallel subagents
