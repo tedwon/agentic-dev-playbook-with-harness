@@ -33,4 +33,15 @@ class QuoteChatResourceTest {
                 .then()
                 .statusCode(400);
     }
+
+    @Test
+    void testChatEndpointMessageTooLong() {
+        String longMessage = "a".repeat(QuoteChatResource.MAX_MESSAGE_LENGTH + 1);
+        given().contentType(ContentType.JSON)
+                .body("{\"message\": \"" + longMessage + "\"}")
+                .when()
+                .post("/api/chat")
+                .then()
+                .statusCode(400);
+    }
 }

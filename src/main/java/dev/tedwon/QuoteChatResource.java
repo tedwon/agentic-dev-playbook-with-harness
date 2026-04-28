@@ -23,15 +23,28 @@ public class QuoteChatResource {
 
     @Inject QuoteService quoteService;
 
+    static final int MAX_MESSAGE_LENGTH = 500;
+
     @POST
     public ChatResponse chat(ChatRequest request) {
         if (request == null || request.message() == null || request.message().isBlank()) {
             throw new WebApplicationException("Message is required", Response.Status.BAD_REQUEST);
         }
-        LOG.infof("Chat request: %s", request.message());
+        if (request.message().length() > MAX_MESSAGE_LENGTH) {
+            throw new WebApplicationException(
+                    "Message must not exceed " + MAX_MESSAGE_LENGTH + " characters",
+                    Response.Status.BAD_REQUEST);
+        }
+        LOG.debugf("Chat request: %s", request.message());
         String quotes = formatQuotes(quoteService.getAllQuotes());
-        String response = chatService.chat(request.message(), quotes);
-        return new ChatResponse(response);
+        try {
+            String response = chatService.chat(request.message(), quotes);
+            return new ChatResponse(response);
+        } catch (Exception e) {
+            LOG.errorf("LLM service call failed: %s", e.getMessage());
+            throw new WebApplicationException(
+                    "AI service is temporarily unavailable", Response.Status.SERVICE_UNAVAILABLE);
+        }
     }
 
     private String formatQuotes(List<Quote> quotes) {
