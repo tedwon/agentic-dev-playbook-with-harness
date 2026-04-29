@@ -22,6 +22,8 @@ public class ChatBotResource {
         LOG.infof("POST /api/chat — message: %s", request.message());
         String aiResponse = quoteAiService.chat(request.message());
         LOG.infof("AI response generated (%d chars)", aiResponse.length());
+        LOG.infof("A");
+
         return new ChatResponse(aiResponse);
     }
 }
