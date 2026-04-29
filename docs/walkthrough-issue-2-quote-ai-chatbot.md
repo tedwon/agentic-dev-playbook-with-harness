@@ -515,5 +515,4 @@ asciinema play -s 2 demo/issue-2-chatbot/recordings/07-chatbot-security.cast
 
 > **재생 속도 조절:** `-s 2`는 2배속입니다. 원래 속도로 보려면 `-s 2`를 빼고 실행하세요.
 > 재생 중 `Space`로 일시정지, `.`으로 한 프레임 전진, `Ctrl+C`로 종료할 수 있습니다.
-
 > **완료!** 이슈 [#2](https://github.com/tedwon/agentic-dev-playbook-with-harness/issues/2)를 닫습니다.
