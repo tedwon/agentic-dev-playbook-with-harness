@@ -37,7 +37,7 @@ echo ""
 
 # CHECK 1: BUILD-01 — Compilation
 echo "  CHECK 1/7: BUILD-01 (compilation)..."
-if ./mvnw compile -q 2>&1 > /dev/null; then
+if ./mvnw compile 2>&1 > /dev/null; then
     pass "BUILD-01"
 else
     fail "BUILD-01" "Compilation failed.
@@ -47,7 +47,7 @@ fi
 
 # CHECK 2: BUILD-02 — Tests
 echo "  CHECK 2/7: BUILD-02 (tests)..."
-if ./mvnw test -q 2>&1 > /dev/null; then
+if ./mvnw test 2>&1 > /dev/null; then
     pass "BUILD-02"
 else
     fail "BUILD-02" "Tests failed.
@@ -57,7 +57,7 @@ fi
 
 # CHECK 3: BUILD-03 — Code Formatting (Spotless)
 echo "  CHECK 3/7: BUILD-03 (formatting)..."
-if ./mvnw spotless:check -q 2>&1 > /dev/null; then
+if ./mvnw spotless:check 2>&1 > /dev/null; then
     pass "BUILD-03"
 else
     fail "BUILD-03" "Code formatting violations found.

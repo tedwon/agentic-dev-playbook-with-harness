@@ -472,4 +472,47 @@ asciinema upload docs/sessions/<파일명>.cast
 
 > **팁:** `.cast` 파일이 커서 `.gitignore`에 추가하고 asciinema.org 링크만 문서에 남길 수도 있습니다.
 
+---
+
+## 데모 녹화 재생
+
+Phase 1~4 완료 후, 핵심 장면을 보여주는 데모 녹화 4개가 `demo/issue-2-chatbot/recordings/`에 생성됩니다.
+발표 중 터미널에서 아래 명령으로 재생할 수 있습니다.
+
+### Self-Correction 데모
+
+하네스가 위반 코드를 잡고 → 에이전트가 수정 → 7/7 체크 통과하는 과정을 보여줍니다.
+
+```bash
+asciinema play -s 2 demo/issue-2-chatbot/recordings/04-chatbot-self-correction.cast
+```
+
+### Build & Test 데모
+
+13개 테스트 전체 통과 + 하네스 7/7 체크 통과를 보여줍니다.
+
+```bash
+asciinema play -s 2 demo/issue-2-chatbot/recordings/05-chatbot-build-test.cast
+```
+
+### Live API 데모
+
+Ollama(qwen3:1.7b) 연동 실시간 AI 챗봇 응답을 보여줍니다.
+
+> **주의:** 이 녹화는 녹화 시점의 LLM 응답이 기록되어 있으므로 Ollama 실행 없이 재생 가능합니다.
+
+```bash
+asciinema play -s 2 demo/issue-2-chatbot/recordings/06-chatbot-live-api.cast
+```
+
+### Security 데모
+
+SpotBugs 정적 분석 + CycloneDX SBOM 생성을 보여줍니다.
+
+```bash
+asciinema play -s 2 demo/issue-2-chatbot/recordings/07-chatbot-security.cast
+```
+
+> **재생 속도 조절:** `-s 2`는 2배속입니다. 원래 속도로 보려면 `-s 2`를 빼고 실행하세요.
+> 재생 중 `Space`로 일시정지, `.`으로 한 프레임 전진, `Ctrl+C`로 종료할 수 있습니다.
 > **완료!** 이슈 [#2](https://github.com/tedwon/agentic-dev-playbook-with-harness/issues/2)를 닫습니다.
